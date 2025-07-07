@@ -89,7 +89,7 @@ def get_ai_response(messages, api_key):
     try:
         openai.api_key = api_key
         
-        # Convert messages to OpenAI format
+        # Convert messages to OpenAI format (exclude the last user message to avoid duplication)
         openai_messages = []
         for msg in messages:
             if msg["role"] in ["user", "assistant"]:
@@ -206,9 +206,9 @@ def main():
         else:
             display_message(message, is_user=False)
     
-    # Chat input - this is the key fix
+    # Chat input - FIXED: Process input only once
     if prompt := st.chat_input("Ask me anything..."):
-        # Add user message
+        # Add user message to session state
         user_message = {
             "role": "user",
             "content": prompt,
@@ -216,14 +216,11 @@ def main():
         }
         st.session_state.messages.append(user_message)
         
-        # Display user message immediately
-        display_message(user_message, is_user=True)
-        
         # Get AI response
         with st.spinner("🤔 Thinking..."):
             ai_response = get_ai_response(st.session_state.messages, st.session_state.api_key)
         
-        # Add AI response
+        # Add AI response to session state
         ai_message = {
             "role": "assistant",
             "content": ai_response,
@@ -231,10 +228,7 @@ def main():
         }
         st.session_state.messages.append(ai_message)
         
-        # Display AI response immediately
-        display_message(ai_message, is_user=False)
-        
-        # Rerun to clear the input and show updated chat
+        # Rerun to update the display
         st.rerun()
     
     # Footer
