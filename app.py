@@ -84,19 +84,20 @@ def verify_api_key(api_key):
     except Exception as e:
         return False
 
-def get_ai_response(messages, api_key):
-    """Get response from OpenAI API"""
+def get_ai_response(messages, api_key, max_history=10):
+    """Get response from OpenAI API with limited message history"""
     try:
         openai.api_key = api_key
         
-        # Convert messages to OpenAI format (exclude the last user message to avoid duplication)
-        openai_messages = []
-        for msg in messages:
-            if msg["role"] in ["user", "assistant"]:
-                openai_messages.append({
-                    "role": msg["role"],
-                    "content": msg["content"]
-                })
+        # Limit to last max_history messages to prevent prompt overload
+        openai_messages = [
+            {
+                "role": msg["role"],
+                "content": msg["content"]
+            }
+            for msg in messages[-max_history:]
+            if msg["role"] in ["user", "assistant"]
+        ]
         
         response = openai.ChatCompletion.create(
             model="gpt-3.5-turbo",
@@ -184,12 +185,12 @@ def main():
         st.markdown("---")
         st.subheader("📝 Instructions")
         st.markdown("""
-        1. Enter your OpenAI API key above
-        2. Click "Verify API Key" to validate
-        3. Start chatting in the main area
-        4. Use "Clear Chat" to start fresh
+        1. Enter your OpenAI API key above  
+        2. Click "Verify API Key" to validate  
+        3. Start chatting in the main area  
+        4. Use "Clear Chat" to start fresh  
         """)
-    
+
     # Main chat area
     st.title("💬 AI Chatbot")
     
@@ -206,9 +207,9 @@ def main():
         else:
             display_message(message, is_user=False)
     
-    # Chat input - FIXED: Process input only once
+    # Chat input
     if prompt := st.chat_input("Ask me anything..."):
-        # Add user message to session state
+        # Add user message
         user_message = {
             "role": "user",
             "content": prompt,
@@ -216,9 +217,13 @@ def main():
         }
         st.session_state.messages.append(user_message)
         
-        # Get AI response
+        # Get AI response with message limit
         with st.spinner("🤔 Thinking..."):
-            ai_response = get_ai_response(st.session_state.messages, st.session_state.api_key)
+            ai_response = get_ai_response(
+                st.session_state.messages,
+                st.session_state.api_key,
+                max_history=10  # Adjust this as needed
+            )
         
         # Add AI response to session state
         ai_message = {
@@ -228,7 +233,7 @@ def main():
         }
         st.session_state.messages.append(ai_message)
         
-        # Rerun to update the display
+        # Rerun to display the response
         st.rerun()
     
     # Footer
